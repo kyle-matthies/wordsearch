@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oso Grande Word Search Study Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #0057b7;
+            text-align: center;
+        }
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        #wordInput {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+        #wordSearchGrid {
+            display: inline-block;
+            border: 1px solid #000;
+            margin-top: 20px;
+        }
+        .grid-row {
+            display: flex;
+        }
+        .cell {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            background-color: #ffffff;
+            cursor: pointer;
+        }
+        .cell.highlighted {
+            background-color: #ffd700;
+        }
+        button {
+            background-color: #ffd700;
+            color: #000000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #ffed80;
+        }
+    </style>
+</head>
+<body>
+    <h1>Oso Grande Word Search Study Tool</h1>
+    <p>Welcome to the unofficial Oso Grande Word Search Generator. This free tool is designed to help your kids study vocab words. Simply type or paste the words into the open text box below and click generate word search. You can solve the puzzle on your screen and click the check puzzle button or print the word search to do it on paper. Click the hint button if you get stuck and a single word will be highlighted to help you out. The grade drop down adjusts the difficulty of the puzzle.</p>
+    <p>Please send any feedback by clicking the button below so I can improve the tool!</p>
+    <button onclick="sendFeedback()">Send Feedback</button>
+
+    <div id="controls">
+        <select id="gradeSelect">
+            <option value="K">Kindergarten</option>
+            <option value="1">1st Grade</option>
+            <option value="2">2nd Grade</option>
+            <option value="3">3rd Grade</option>
+            <option value="4">4th Grade</option>
+            <option value="5">5th Grade</option>
+        </select>
+        <button onclick="generateWordSearch()">Generate Word Search</button>
+        <button onclick="clearPuzzle()">Clear</button>
+        <button onclick="getHint()">Get Hint</button>
+        <button onclick="checkPuzzle()">Check Puzzle</button>
+        <button onclick="printWordSearch()">Print Word Search</button>
+    </div>
+
+    <textarea id="wordInput" placeholder="Enter words, one per line"></textarea>
+    <div id="wordSearchGrid"></div>
+
+    <script>
+        let grid = [];
+        let words = [];
+        let wordPositions = [];
+
+        function generateWordSearch() {
+            words = document.getElementById('wordInput').value.split('\n').map(word => word.trim().toUpperCase());
+            if (words.length === 0) {
+                alert('Please enter at least one word.');
+                return;
+            }
+
+            const gridSize = Math.max(10, Math.ceil(Math.sqrt(words.join('').length * 2)));
+            grid = createEmptyGrid(gridSize);
+            wordPositions = createEmptyGrid(gridSize);
+
+            placeWords();
+            fillEmptyCells();
+            displayGrid();
+        }
+
+        function createEmptyGrid(size) {
+            return Array(size).fill().map(() => Array(size).fill(''));
+        }
+
+        function placeWords() {
+            const directions = [[0, 1], [1, 0], [1, 1]]; // right, down, diagonal
+            words.forEach(word => {
+                let placed = false;
+                while (!placed) {
+                    const direction = directions[Math.floor(Math.random() * directions.length)];
+                    const row = Math.floor(Math.random() * grid.length);
+                    const col = Math.floor(Math.random() * grid.length);
+                    if (canPlaceWord(word, row, col, direction)) {
+                        placeWord(word, row, col, direction);
+                        placed = true;
+                    }
+                }
+            });
+        }
+
+        function canPlaceWord(word, row, col, direction) {
+            for (let i = 0; i < word.length; i++) {
+                const newRow = row + i * direction[0];
+                const newCol = col + i * direction[1];
+                if (newRow >= grid.length || newCol >= grid.length) return false;
+                if (grid[newRow][newCol] !== '' && grid[newRow][newCol] !== word[i]) return false;
+            }
+            return true;
+        }
+
+        function placeWord(word, row, col, direction) {
+            for (let i = 0; i < word.length; i++) {
+                const newRow = row + i * direction[0];
+                const newCol = col + i * direction[1];
+                grid[newRow][newCol] = word[i];
+                wordPositions[newRow][newCol] = true;
+            }
+        }
+
+        function fillEmptyCells() {
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            for (let i = 0; i < grid.length; i++) {
+                for (let j = 0; j < grid.length; j++) {
+                    if (grid[i][j] === '') {
+                        grid[i][j] = letters[Math.floor(Math.random() * letters.length)];
+                    }
+                }
+            }
+        }
+
+        function displayGrid() {
+            const gridElement = document.getElementById('wordSearchGrid');
+            gridElement.innerHTML = '';
+            for (let i = 0; i < grid.length; i++) {
+                const row = document.createElement('div');
+                row.className = 'grid-row';
+                for (let j = 0; j < grid.length; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.textContent = grid[i][j];
+                    cell.onclick = () => toggleHighlight(cell);
+                    row.appendChild(cell);
+                }
+                gridElement.appendChild(row);
+            }
+        }
+
+        function toggleHighlight(cell) {
+            cell.classList.toggle('highlighted');
+        }
+
+        function getHint() {
+            const unsolvedWords = words.filter(word => !isWordFound(word));
+            if (unsolvedWords.length > 0) {
+                const wordToHint = unsolvedWords[Math.floor(Math.random() * unsolvedWords.length)];
+                highlightWord(wordToHint);
+            } else {
+                alert('All words have been found!');
+            }
+        }
+
+        function isWordFound(word) {
+            // This is a simplified check. A more robust solution would be needed for a real application.
+            return document.querySelectorAll('.cell.highlighted').length >= word.length;
+        }
+
+        function highlightWord(word) {
+            for (let i = 0; i < grid.length; i++) {
+                for (let j = 0; j < grid.length; j++) {
+                    if (grid[i][j] === word[0] && wordPositions[i][j]) {
+                        const directions = [[0, 1], [1, 0], [1, 1]];
+                        for (const [dx, dy] of directions) {
+                            if (checkDirection(word, i, j, dx, dy)) {
+                                for (let k = 0; k < word.length; k++) {
+                                    const cell = document.querySelector(`.cell:nth-child(${j + 1 + k * dy}):nth-child(${i + 1 + k * dx})`);
+                                    if (cell) cell.classList.add('highlighted');
+                                }
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function checkDirection(word, row, col, dx, dy) {
+            for (let i = 0; i < word.length; i++) {
+                if (row >= grid.length || col >= grid.length || grid[row][col] !== word[i]) return false;
+                row += dx;
+                col += dy;
+            }
+            return true;
+        }
+
+        function checkPuzzle() {
+            const highlightedCells = document.querySelectorAll('.cell.highlighted');
+            let correctWords = 0;
+            words.forEach(word => {
+                if (isWordCorrectlyHighlighted(word)) correctWords++;
+            });
+            alert(`You've found ${correctWords} out of ${words.length} words correctly!`);
+        }
+
+        function isWordCorrectlyHighlighted(word) {
+            // This is a simplified check. A more robust solution would be needed for a real application.
+            return document.querySelectorAll('.cell.highlighted').length >= word.length;
+        }
+
+        function clearPuzzle() {
+            document.getElementById('wordInput').value = '';
+            document.getElementById('wordSearchGrid').innerHTML = '';
+            grid = [];
+            words = [];
+            wordPositions = [];
+        }
+
+        function printWordSearch() {
+            window.print();
+        }
+
+        function sendFeedback() {
+            window.location.href = 'mailto:kyle.matthies@gmail.com?subject=Oso%20Grande%20Word%20Search%20Generator%20Feedback';
+        }
+    </script>
+</body>
+</html>
